@@ -82,7 +82,7 @@ export async function getAllReviews(): Promise<Review[]> {
       
       if (error) {
         // より詳細なエラー情報をログに出力
-        console.warn('Failed to fetch reviews from Supabase, falling back to localStorage:', {
+        console.warn('Failed to fetch reviews from Supabase:', {
           message: error.message || 'Unknown error',
           details: error.details || 'No details',
           hint: error.hint || 'No hint',
@@ -91,8 +91,10 @@ export async function getAllReviews(): Promise<Review[]> {
           errorType: typeof error,
           errorKeys: error ? Object.keys(error) : [],
         })
-        // エラー時はlocalStorageにフォールバック
-        return getReviewsFromLocalStorage()
+        // エラー時もlocalStorageの古いキャッシュは使わず、空配列を返す（最新データを優先）
+        // localStorageにフォールバックしないように変更
+        console.warn('Supabaseからレビューを取得できませんでした。ページを再読み込みしてください。')
+        return []
       }
       
       // dataがnullまたは空配列の場合も処理
@@ -142,8 +144,9 @@ export async function getAllReviews(): Promise<Review[]> {
           challenges: item.challenges,
         }))
         
-        // localStorageにキャッシュとして保存（オフライン対応）
+        // localStorageの古いキャッシュをクリアしてから新しいデータを保存
         if (typeof window !== 'undefined') {
+          localStorage.removeItem('reviews') // 古いキャッシュをクリア
           localStorage.setItem('reviews', JSON.stringify(reviews))
         }
         

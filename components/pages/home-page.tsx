@@ -39,6 +39,19 @@ export default function HomePage() {
         }
       }
       
+      // URLパラメータでキャッシュクリアが指定されている場合
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search)
+        if (urlParams.get('clear_cache') === 'true') {
+          localStorage.removeItem('reviews')
+          localStorage.removeItem('reviews_migrated_to_supabase')
+          // URLパラメータを削除
+          urlParams.delete('clear_cache')
+          const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
+          window.history.replaceState({}, '', newUrl)
+        }
+      }
+      
       // レビューを取得（Supabase優先、フォールバックはlocalStorage）
       const fetchedReviews = await getAllReviews()
       // 最新順（IDの降順）でソート
