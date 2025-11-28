@@ -81,24 +81,8 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html {
-    font-size: clamp(14px, 1.5vw, 16px);
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
   body {
     @apply bg-background text-foreground;
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-    word-break: break-word;
-  }
-  h1, h2, h3, h4, h5, h6 {
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-  }
-  p, span, div, a, button, label, input, textarea, select {
-    overflow-wrap: break-word;
-    word-wrap: break-word;
   }
 }
 
@@ -110,35 +94,61 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-  /* レスポンシブなテキストサイズ */
-  .text-responsive-xs {
-    font-size: clamp(0.625rem, 0.5vw + 0.5rem, 0.75rem);
+  
+  /* モバイル向けタッチ操作の最適化 */
+  .touch-manipulation {
+    touch-action: manipulation;
   }
-  .text-responsive-sm {
-    font-size: clamp(0.75rem, 0.75vw + 0.5rem, 0.875rem);
+  
+  /* テキストの長い行を折り返す */
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
-  .text-responsive-base {
-    font-size: clamp(0.875rem, 1vw + 0.5rem, 1rem);
+
+  /* カスタムスライダースタイル */
+  .range-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    border: 3px solid hsl(var(--background));
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.1s ease;
   }
-  .text-responsive-lg {
-    font-size: clamp(1rem, 1.25vw + 0.5rem, 1.125rem);
+  .range-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
   }
-  .text-responsive-xl {
-    font-size: clamp(1.125rem, 1.5vw + 0.5rem, 1.25rem);
+  .range-slider::-webkit-slider-thumb:active {
+    transform: scale(1.15);
   }
-  .text-responsive-2xl {
-    font-size: clamp(1.25rem, 2vw + 0.5rem, 1.5rem);
+  .range-slider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    border: 3px solid hsl(var(--background));
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: transform 0.1s ease;
   }
-  .text-responsive-3xl {
-    font-size: clamp(1.5rem, 2.5vw + 0.5rem, 1.875rem);
+  .range-slider::-moz-range-thumb:hover {
+    transform: scale(1.1);
   }
-  .text-responsive-4xl {
-    font-size: clamp(1.875rem, 3vw + 0.5rem, 2.25rem);
+  .range-slider::-moz-range-thumb:active {
+    transform: scale(1.15);
   }
-  .text-responsive-5xl {
-    font-size: clamp(2.25rem, 4vw + 0.5rem, 3rem);
-  }
-  .text-responsive-6xl {
-    font-size: clamp(2.5rem, 5vw + 0.5rem, 3.75rem);
+  .range-slider::-ms-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: hsl(var(--primary));
+    border: 3px solid hsl(var(--background));
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
   }
 }

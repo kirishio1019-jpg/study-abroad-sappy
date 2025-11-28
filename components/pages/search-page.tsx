@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react"
 import ReviewCard from "@/components/review-card"
 import { universitiesByRegion, regions, type University } from "@/lib/universities"
+import { costOfLivingOptions, costOfLivingOrder, type CostOfLivingLevel, isCostOfLivingBelowMax } from "@/lib/cost-of-living"
 
 interface StrongFieldCategory {
   category: string
@@ -49,12 +50,9 @@ const strongFieldCategories: StrongFieldCategory[] = [
     category: "Language & Education",
     fields: [
       "Linguistics",
-      "Applied Linguistics",
-      "TESOL",
-      "English Education",
       "Translation",
       "Interpretation",
-      "Comparative Education",
+      "Education",
     ],
   },
   {
@@ -74,7 +72,8 @@ const strongFieldCategories: StrongFieldCategory[] = [
       "ICT",
       "Data Science",
       "Digital Media",
-      "Innovation and Society",
+      "Computer Science",
+      "Engineering",
     ],
   },
   {
@@ -85,7 +84,6 @@ const strongFieldCategories: StrongFieldCategory[] = [
       "Ethics",
       "Literature",
       "Art",
-      "Performing Arts",
       "Area Studies (e.g., Asian, European, American)",
       "Liberal Arts",
     ],
@@ -94,7 +92,6 @@ const strongFieldCategories: StrongFieldCategory[] = [
     category: "Psychology & Human Behavior",
     fields: [
       "Psychology",
-      "Cross-Cultural Psychology",
       "Human Development",
       "Social Behavior",
     ],
@@ -125,7 +122,7 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
     region: getInitialRegion(),
     country: initialFilters?.country || "",
     universityId: "",
-    maxCost: 500000,
+    maxCostOfLiving: null as CostOfLivingLevel | null,
     strongFields: [] as string[],
     startYear: "",
   })
@@ -234,7 +231,8 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
           if (selectedUniversity && review.university !== selectedUniversity.name) return false
         }
       }
-      if (review.cost > filters.maxCost) return false
+      // 物価レベルでフィルタリング（最大物価レベル以下のレビューを表示）
+      if (!isCostOfLivingBelowMax(review.costOfLiving, filters.maxCostOfLiving)) return false
       // 強みのある分野でフィルタリング（選択した分野のいずれかを含むレビューを表示）
       if (filters.strongFields.length > 0) {
         const reviewFields = review.strongFields || []
@@ -257,7 +255,7 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
       }
       return true
     })
-  }, [allReviews, filters.region, filters.country, filters.universityId, filters.maxCost, filters.strongFields, filters.startYear, availableUniversities])
+  }, [allReviews, filters.region, filters.country, filters.universityId, filters.maxCostOfLiving, filters.strongFields, filters.startYear, availableUniversities])
 
   const toggleRegionFilter = useCallback((region: string) => {
     if (filters.region === region) {
@@ -278,7 +276,7 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
   }, [])
 
   const handleClearFilters = useCallback(() => {
-    setFilters({ region: "", country: "", universityId: "", maxCost: 500000, strongFields: [], startYear: "" })
+    setFilters({ region: "", country: "", universityId: "", maxCostOfLiving: null, strongFields: [], startYear: "" })
     setExpandedRegion(null)
     setExpandedStrongFieldCategory(null)
   }, [])
@@ -292,7 +290,7 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
     }))
   }, [])
 
-  const handleRemoveFilter = useCallback((type: "region" | "country" | "university" | "cost" | "strongField" | "startYear", value?: string) => {
+  const handleRemoveFilter = useCallback((type: "region" | "country" | "university" | "costOfLiving" | "strongField" | "startYear", value?: string) => {
     switch (type) {
       case "region":
         setFilters((prev) => ({ ...prev, region: "", country: "", universityId: "" }))
@@ -304,8 +302,8 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
       case "university":
         setFilters((prev) => ({ ...prev, universityId: "" }))
         break
-      case "cost":
-        setFilters((prev) => ({ ...prev, maxCost: 500000 }))
+      case "costOfLiving":
+        setFilters((prev) => ({ ...prev, maxCostOfLiving: null }))
         break
       case "strongField":
         if (value) {
@@ -530,29 +528,37 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
             </select>
           </div>
 
-          {/* Cost Filter */}
+          {/* Cost of Living Filter */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              最大月額費用: ¥{filters.maxCost.toLocaleString()}
+              最大物価レベル: {filters.maxCostOfLiving ? costOfLivingOptions.find(opt => opt.value === filters.maxCostOfLiving)?.label : "すべて"}
             </label>
             <input
               type="range"
               min="0"
-              max="500000"
-              step="10000"
-              value={filters.maxCost}
-              onChange={(e) => setFilters((prev) => ({ ...prev, maxCost: Number.parseInt(e.target.value) }))}
-              className="w-full"
+              max={costOfLivingOrder.length}
+              step="1"
+              value={filters.maxCostOfLiving ? costOfLivingOrder.indexOf(filters.maxCostOfLiving) + 1 : costOfLivingOrder.length}
+              onChange={(e) => {
+                const index = Number.parseInt(e.target.value)
+                if (index === 0 || index === costOfLivingOrder.length) {
+                  // 最初または最後の位置（すべて表示）
+                  setFilters((prev) => ({ ...prev, maxCostOfLiving: null }))
+                } else {
+                  setFilters((prev) => ({ ...prev, maxCostOfLiving: costOfLivingOrder[index - 1] }))
+                }
+              }}
+              className="w-full range-slider"
             />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
-              <span>¥0</span>
-              <span>¥500,000</span>
+              <span>すべて表示</span>
+              <span>{costOfLivingOptions[costOfLivingOptions.length - 1]?.label}</span>
             </div>
           </div>
         </div>
 
         {/* Active Filters Display */}
-        {(filters.region || filters.country || filters.universityId || filters.maxCost < 500000 || filters.strongFields.length > 0 || filters.startYear) && (
+        {(filters.region || filters.country || filters.universityId || filters.maxCostOfLiving || filters.strongFields.length > 0 || filters.startYear) && (
           <div className="mt-6 pt-6 border-t border-border">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-muted-foreground">適用中のフィルター:</span>
@@ -607,13 +613,13 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
                   <span>×</span>
                 </button>
               )}
-              {filters.maxCost < 500000 && (
+              {filters.maxCostOfLiving && (
                 <button
                   type="button"
-                  onClick={() => handleRemoveFilter("cost")}
+                  onClick={() => handleRemoveFilter("costOfLiving")}
                   className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium hover:bg-primary/20 flex items-center gap-2"
                 >
-                  費用: ¥{filters.maxCost.toLocaleString()}以下
+                  最大物価レベル: {costOfLivingOptions.find(opt => opt.value === filters.maxCostOfLiving)?.label}
                   <span>×</span>
                 </button>
               )}
@@ -634,11 +640,11 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
         <p className="text-muted-foreground mb-4">
           {filteredReviews.length}件のレビューが見つかりました
         </p>
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
           {filteredReviews.length > 0 ? (
             filteredReviews.map((review) => <ReviewCard key={review.id} review={review} />)
           ) : (
-            <div className="text-center py-12 bg-card border border-border rounded-lg">
+            <div className="col-span-1 lg:col-span-2 text-center py-12 bg-card border border-border rounded-lg">
               <p className="text-muted-foreground mb-2">条件に合うレビューが見つかりません</p>
               <p className="text-sm text-muted-foreground">フィルターを変更してお試しください</p>
             </div>

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
+import CommentSection from "@/components/comment-section"
+import { getAllReviews } from "@/lib/reviews"
 
 interface DetailPageProps {
   reviewId: number
@@ -53,11 +55,20 @@ interface Review {
   region?: string
 }
 
-const costOfLivingLabels: Record<string, string> = {
+import { costOfLivingLabels as newCostOfLivingLabels } from "@/lib/cost-of-living"
+
+// 後方互換性のため、古いラベルも残す
+const legacyCostOfLivingLabels: Record<string, string> = {
   low: "低い（月15万円以下）",
   average: "平均的（月15～25万円）",
   high: "高い（月25～35万円）",
   "very-high": "非常に高い（月35万円以上）",
+}
+
+// 物価レベルラベルを取得する関数（新旧両対応）
+const getCostOfLivingLabel = (value: string | undefined): string => {
+  if (!value) return "-"
+  return newCostOfLivingLabels[value] || legacyCostOfLivingLabels[value] || value
 }
 
 export default function DetailPage({ reviewId }: DetailPageProps) {
@@ -66,6 +77,11 @@ export default function DetailPage({ reviewId }: DetailPageProps) {
   const [canEdit, setCanEdit] = useState(false)
   const [canDelete, setCanDelete] = useState(false)
   const [user, setUser] = useState<User | null>(null)
+
+  // 詳細ページが表示された時に一番上にスクロール
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [reviewId])
 
   // ユーザー認証状態を確認
   useEffect(() => {
@@ -91,39 +107,41 @@ export default function DetailPage({ reviewId }: DetailPageProps) {
 
   useEffect(() => {
     setIsClient(true)
-    // localStorageからレビューを読み込む
-    const savedReviews = localStorage.getItem('reviews')
-    if (savedReviews) {
-      try {
-        const reviews = JSON.parse(savedReviews)
-        const foundReview = reviews.find((r: Review) => r.id === reviewId)
-        if (foundReview) {
-          setReview(foundReview)
-          
-          // ユーザーIDで作成者チェック
-          if (user && foundReview.userId) {
-            // 新しいデータ（userIdがある場合）
-            setCanEdit(foundReview.userId === user.id)
-            setCanDelete(foundReview.userId === user.id)
-          } else if (user && !foundReview.userId) {
-            // 古いデータ（userIdがない場合）- 後方互換性のため作成者名でチェック
-            const reviewCreators = localStorage.getItem('reviewCreators')
-            const creators = reviewCreators ? JSON.parse(reviewCreators) : {}
-            const originalAuthor = creators[reviewId]
-            // 古いデータは編集・削除不可に設定（セキュリティのため）
-            setCanEdit(false)
-            setCanDelete(false)
-          } else {
-            // ログインしていない場合
-            setCanEdit(false)
-            setCanDelete(false)
-          }
-        }
-      } catch (e) {
-        console.error('Failed to load review:', e)
-      }
-    }
+    loadReview()
   }, [reviewId, user])
+
+  const loadReview = async () => {
+    try {
+      // SupabaseまたはlocalStorageからレビューを取得
+      const reviews = await getAllReviews()
+      const foundReview = reviews.find((r: any) => r.id === reviewId)
+      
+      if (foundReview) {
+        setReview(foundReview as Review)
+        
+        // ユーザーIDで作成者チェック
+        if (user && foundReview.userId) {
+          // 新しいデータ（userIdがある場合）
+          setCanEdit(foundReview.userId === user.id)
+          setCanDelete(foundReview.userId === user.id)
+        } else if (user && !foundReview.userId) {
+          // 古いデータ（userIdがない場合）- 後方互換性のため作成者名でチェック
+          const reviewCreators = localStorage.getItem('reviewCreators')
+          const creators = reviewCreators ? JSON.parse(reviewCreators) : {}
+          const originalAuthor = creators[reviewId]
+          // 古いデータは編集・削除不可に設定（セキュリティのため）
+          setCanEdit(false)
+          setCanDelete(false)
+        } else {
+          // ログインしていない場合
+          setCanEdit(false)
+          setCanDelete(false)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load review:', e)
+    }
+  }
 
   if (!isClient || !review) {
     return (
@@ -421,7 +439,7 @@ export default function DetailPage({ reviewId }: DetailPageProps) {
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-2">物価レベル</p>
                     <p className="text-sm text-foreground font-medium">
-                      {costOfLivingLabels[review.costOfLiving] || review.costOfLiving}
+                      {getCostOfLivingLabel(review.costOfLiving)}
                     </p>
                     {review.costOfLivingNote && (
                       <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap leading-relaxed">{review.costOfLivingNote}</p>
@@ -525,6 +543,9 @@ export default function DetailPage({ reviewId }: DetailPageProps) {
             )}
           </div>
         </section>
+
+        {/* コメントセクション */}
+        <CommentSection reviewId={reviewId} />
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react"
 import { universitiesByRegion, regions, type University } from "@/lib/universities"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
+import { saveReview, getAllReviews, type Review } from "@/lib/reviews"
 
 interface StrongFieldCategory {
   category: string
@@ -122,12 +123,7 @@ const classLanguageOptions = [
   "ミックス",
 ]
 
-const costOfLivingOptions = [
-  { label: "低い（月15万円以下）", value: "low" },
-  { label: "平均的（月15～25万円）", value: "average" },
-  { label: "高い（月25～35万円）", value: "high" },
-  { label: "非常に高い（月35万円以上）", value: "very-high" },
-]
+import { costOfLivingOptions } from "@/lib/cost-of-living"
 
 interface FormData {
   major: string
@@ -534,8 +530,8 @@ export default function ReviewFormPage({ onPageChange, editReviewId }: ReviewFor
     }
 
     // レビューを作成または更新
-    const reviewData = {
-      id: editReviewId || Date.now(), // 編集モードの場合は既存のIDを使用
+    const reviewData: Review = {
+      id: editReviewId || 0, // 編集モードの場合は既存のIDを使用、新規作成時は0
       country: selectedUniversity.country,
       university: selectedUniversity.name,
       universityId: selectedUniversity.id,
@@ -544,8 +540,27 @@ export default function ReviewFormPage({ onPageChange, editReviewId }: ReviewFor
       cost: 0, // 月額費用フィールドを削除したため0に設定
       language: formData.classLanguage || "",
       author: formData.author || user?.email?.split('@')[0] || user?.user_metadata?.full_name || "匿名",
-      userId: user?.id || formData.author || 'anonymous', // ユーザーIDを保存（未設定の場合は匿名）
-      date: new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }),
+      userId: user?.id,
+      date: editReviewId 
+        ? (() => {
+            // 編集モードの場合、既存の日付を保持
+            if (isClient) {
+              const existingReviews = localStorage.getItem('reviews')
+              if (existingReviews) {
+                try {
+                  const reviews = JSON.parse(existingReviews)
+                  const existingReview = reviews.find((r: any) => r.id === editReviewId)
+                  if (existingReview) {
+                    return existingReview.date
+                  }
+                } catch (e) {
+                  // パースエラー時は新しい日付を使用
+                }
+              }
+            }
+            return new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
+          })()
+        : new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }),
       excerpt: formData.positives || formData.challenges || "",
       strongFields: formData.strongFields || [],
       region: selectedUniversity.region,
@@ -553,11 +568,11 @@ export default function ReviewFormPage({ onPageChange, editReviewId }: ReviewFor
       major: formData.major,
       studyMajor: formData.studyMajor,
       selectionReason: formData.selectionReason,
-          startDate: formData.startDate || (formData.startSeason && formData.startYear ? `${formData.startYear}年 ${formData.startSeason}` : formData.startSeason) || "",
-          startYear: formData.startYear,
-          endDate: formData.endDate || (formData.endSeason && formData.endYear ? `${formData.endYear}年 ${formData.endSeason}` : formData.endSeason) || "",
-          endYear: formData.endYear,
-          vacationPeriod: formData.vacationPeriod,
+      startDate: formData.startDate || (formData.startSeason && formData.startYear ? `${formData.startYear}年 ${formData.startSeason}` : formData.startSeason) || "",
+      startYear: formData.startYear,
+      endDate: formData.endDate || (formData.endSeason && formData.endYear ? `${formData.endYear}年 ${formData.endSeason}` : formData.endSeason) || "",
+      endYear: formData.endYear,
+      vacationPeriod: formData.vacationPeriod,
       creditsEarned: formData.creditsEarned,
       creditsTransferred: formData.creditsTransferred,
       credits300Level: formData.credits300Level,
@@ -575,50 +590,37 @@ export default function ReviewFormPage({ onPageChange, editReviewId }: ReviewFor
       accommodation: formData.accommodation,
       extracurricularActivities: formData.extracurricularActivities,
       extracurricularActivitiesNote: formData.extracurricularActivitiesNote,
-      overallReview: "", // 総合レビューフィールドを削除したため空文字
       positives: formData.positives,
       challenges: formData.challenges,
     }
 
-    // localStorageに保存または更新
-    if (isClient) {
-      const existingReviews = localStorage.getItem('reviews')
-      const reviews = existingReviews ? JSON.parse(existingReviews) : []
+    try {
+      // SupabaseまたはlocalStorageに保存
+      const savedReview = await saveReview(reviewData)
       
       if (editReviewId) {
-        // 編集モード: 既存のレビューを更新
-        const reviewIndex = reviews.findIndex((r: any) => r.id === editReviewId)
-        if (reviewIndex !== -1) {
-          // 投稿日は変更せず、他の情報を更新
-          reviewData.date = reviews[reviewIndex].date
-          reviews[reviewIndex] = reviewData
-          localStorage.setItem('reviews', JSON.stringify(reviews))
-          alert("レビューを更新しました")
-          
-          // 編集完了後、レビュー詳細ページに戻る
-          if (onPageChange) {
-            window.dispatchEvent(new CustomEvent('pageChange', { detail: { page: 'detail' } }))
-            window.dispatchEvent(new CustomEvent('reviewDetailClick', { detail: { reviewId: editReviewId } }))
-            return
-          }
+        alert("レビューを更新しました")
+        // 編集完了後、レビュー詳細ページに戻る
+        if (onPageChange) {
+          window.dispatchEvent(new CustomEvent('pageChange', { detail: { page: 'detail' } }))
+          window.dispatchEvent(new CustomEvent('reviewDetailClick', { detail: { reviewId: savedReview.id } }))
+          return
         }
       } else {
-        // 新規作成モード
-        reviews.unshift(reviewData) // 最新を先頭に追加
-        localStorage.setItem('reviews', JSON.stringify(reviews))
-        
-        // ユーザーIDで作成者情報を保存（編集権限管理用 - 後方互換性のため）
-        const reviewCreators = localStorage.getItem('reviewCreators')
-        const creators = reviewCreators ? JSON.parse(reviewCreators) : {}
-        creators[reviewData.id] = reviewData.userId || reviewData.author
-        localStorage.setItem('reviewCreators', JSON.stringify(creators))
+        alert("レビューを投稿しました")
       }
       
       // フォームデータをクリア
-      localStorage.removeItem('reviewFormData')
+      if (isClient) {
+        localStorage.removeItem('reviewFormData')
+      }
       
       // カスタムイベントを発火して他のコンポーネントに通知
       window.dispatchEvent(new Event('reviewUpdated'))
+    } catch (error) {
+      console.error('Failed to save review:', error)
+      alert("レビューの保存に失敗しました。もう一度お試しください。")
+      return
     }
 
     // フォームをリセット

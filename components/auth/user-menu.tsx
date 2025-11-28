@@ -15,32 +15,53 @@ export default function UserMenu() {
     const configured = isSupabaseConfigured()
     setIsConfigured(configured)
     
+    // 環境変数が設定されていない場合はすぐにローディングを終了
     if (!configured) {
       setIsLoading(false)
       return
     }
+
+    // タイムアウトを設定（2秒でローディングを終了）
+    const timeoutId = setTimeout(() => {
+      console.warn('UserMenu: Loading timeout, setting isLoading to false')
+      setIsLoading(false)
+    }, 2000)
 
     try {
       const supabase = createClient()
 
       // 現在のユーザーを取得
       supabase.auth.getUser().then(({ data: { user } }) => {
+        clearTimeout(timeoutId)
         setUser(user)
         setIsLoading(false)
       }).catch((error) => {
+        clearTimeout(timeoutId)
         console.error('Failed to get user:', error)
         setIsLoading(false)
       })
 
       // 認証状態の変化を監視
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null)
-      })
+      let subscription: { unsubscribe: () => void } | null = null
+      try {
+        const {
+          data: { subscription: sub },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+          setUser(session?.user ?? null)
+        })
+        subscription = sub
+      } catch (error) {
+        console.error('Failed to set up auth state listener:', error)
+      }
 
-      return () => subscription.unsubscribe()
+      return () => {
+        clearTimeout(timeoutId)
+        if (subscription) {
+          subscription.unsubscribe()
+        }
+      }
     } catch (error) {
+      clearTimeout(timeoutId)
       console.error('Failed to initialize Supabase client:', error)
       setIsLoading(false)
     }
@@ -68,12 +89,14 @@ export default function UserMenu() {
     }
   }
 
-  if (isLoading) {
+  // ローディング中はパルスアニメーションを表示（環境変数が設定されている場合のみ）
+  if (isLoading && isConfigured) {
     return (
       <div className="w-8 h-8 rounded-full bg-muted animate-pulse"></div>
     )
   }
 
+  // ローディングが終了した後、ユーザーがいない場合はログインボタンを表示
   if (!user) {
     return <LoginButton />
   }

@@ -187,8 +187,8 @@ export default function CountryStatsGrid() {
   }, [allCountries, reviews])
 
   return (
-    <div className="overflow-x-auto pb-4 scrollbar-hide">
-      <div className="flex gap-4 min-w-max">
+    <div className="overflow-x-auto pb-4 scrollbar-hide -mx-4 sm:mx-0 px-4 sm:px-0">
+      <div className="flex gap-3 sm:gap-4 min-w-max">
         {countryStats.map((country) => (
           <div
             key={country.name}
@@ -205,32 +205,32 @@ export default function CountryStatsGrid() {
                 } 
               }))
             }}
-            className="group bg-card border border-border rounded-xl p-5 hover:shadow-md hover:border-primary/40 transition-all duration-300 cursor-pointer flex-shrink-0 w-64"
+            className="group bg-card border border-border rounded-xl p-4 sm:p-5 hover:shadow-md hover:border-primary/40 active:scale-[0.98] transition-all duration-300 cursor-pointer flex-shrink-0 w-56 sm:w-64 touch-manipulation"
           >
-          <h3 className="font-semibold text-foreground mb-4 group-hover:text-primary transition-colors">
-            {country.name}
-          </h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-xs font-medium">レビュー数</span>
-              <span className="font-semibold text-foreground bg-muted/40 px-2 py-1 rounded-md">{country.reviews}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-xs font-medium">平均費用</span>
-              <span className="font-semibold text-foreground bg-muted/40 px-2 py-1 rounded-md">
-                {country.avgCost > 0 
-                  ? `${Math.round(country.avgCost / 1000)}k`
-                  : "-"}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground text-xs font-medium">平均評価</span>
-              <span className="font-semibold text-accent">
-                {country.rating > 0 ? `${country.rating.toFixed(1)}★` : "-"}
-              </span>
+            <h3 className="text-sm sm:text-base font-semibold text-foreground mb-3 sm:mb-4 group-hover:text-primary transition-colors">
+              {country.name}
+            </h3>
+            <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs font-medium">レビュー数</span>
+                <span className="font-semibold text-foreground bg-muted/40 px-2 py-1 rounded-md text-xs sm:text-sm">{country.reviews}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs font-medium">平均費用</span>
+                <span className="font-semibold text-foreground bg-muted/40 px-2 py-1 rounded-md text-xs sm:text-sm">
+                  {country.avgCost > 0 
+                    ? `${Math.round(country.avgCost / 1000)}k`
+                    : "-"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-xs font-medium">平均評価</span>
+                <span className="font-semibold text-accent text-xs sm:text-sm">
+                  {country.rating > 0 ? `${country.rating.toFixed(1)}★` : "-"}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
         ))}
       </div>
     </div>

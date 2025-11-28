@@ -60,8 +60,6 @@ export default function App() {
       const customEvent = e as CustomEvent<{ reviewId: number }>
       setSelectedReviewId(customEvent.detail.reviewId)
       setCurrentPage('detail')
-      // 詳細ページの一番上にスクロール
-      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
     const handlePageChange = (e: Event) => {
@@ -118,3 +116,5 @@ export default function App() {
     </div>
   )
 }
+
+
