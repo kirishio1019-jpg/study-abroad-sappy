@@ -39,9 +39,11 @@ export default function HomePage() {
         }
       }
       
-      // URLパラメータでキャッシュクリアが指定されている場合
+      // ページ読み込み時に必ずキャッシュをクリアしてからSupabaseから取得
+      // これにより、パソコンで投稿されたレビューがスマホでも確実に反映される
       if (typeof window !== 'undefined') {
         try {
+          // URLパラメータでキャッシュクリアが指定されている場合
           const urlParams = new URLSearchParams(window.location.search)
           if (urlParams.get('clear_cache') === 'true') {
             // キャッシュをクリア
@@ -53,6 +55,18 @@ export default function HomePage() {
             urlParams.delete('clear_cache')
             const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
             window.history.replaceState({}, '', newUrl)
+          }
+          
+          // ページ読み込み時は必ずキャッシュをクリアしてSupabaseから最新データを取得
+          // これにより、他のデバイス（パソコン）で投稿されたレビューが確実に反映される
+          const lastLoaded = localStorage.getItem('reviews_last_loaded')
+          const now = Date.now()
+          const shouldRefresh = !lastLoaded || (now - parseInt(lastLoaded, 10)) > 30000 // 30秒以上経過したら更新
+          
+          if (shouldRefresh) {
+            console.log('🔄 Clearing cache and fetching fresh data from Supabase...')
+            localStorage.removeItem('reviews') // 古いキャッシュをクリア
+            localStorage.setItem('reviews_last_loaded', now.toString()) // 更新時刻を記録
           }
         } catch (error) {
           console.warn('Error handling cache clear:', error)
