@@ -53,7 +53,14 @@ export default function HomePage() {
       }
       
       // レビューを取得（Supabase優先、フォールバックはlocalStorage）
+      // スマホのキャッシュ問題を解決するため、必ずSupabaseから最新データを取得
       const fetchedReviews = await getAllReviews()
+      
+      // デバッグログ（開発環境のみ）
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📱 Loaded ${fetchedReviews.length} reviews on home page`)
+      }
+      
       // 最新順（IDの降順）でソート
       fetchedReviews.sort((a, b) => b.id - a.id)
       setReviews(fetchedReviews)

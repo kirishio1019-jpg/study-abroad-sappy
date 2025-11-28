@@ -143,7 +143,7 @@ export async function getAllReviews(): Promise<Review[]> {
       }
       
       // dataがnullまたは空配列の場合も処理
-      if (data) {
+      if (data && data.length > 0) {
         // SupabaseのデータをReview形式に変換
         const reviews = data.map(convertSupabaseReviewToReview)
         
@@ -151,12 +151,22 @@ export async function getAllReviews(): Promise<Review[]> {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('reviews') // 古いキャッシュをクリア
           localStorage.setItem('reviews', JSON.stringify(reviews))
+          console.log(`✅ Loaded ${reviews.length} reviews from Supabase and cached to localStorage`)
         }
         
         return reviews
       }
       
-      // dataがnullの場合は空配列を返す
+      // dataが空の場合は、localStorageから取得を試みる（フォールバック）
+      console.warn('No reviews found in Supabase, checking localStorage...')
+      const localReviews = getReviewsFromLocalStorage()
+      if (localReviews.length > 0) {
+        console.log(`⚠️ Using ${localReviews.length} reviews from localStorage (fallback)`)
+        return localReviews
+      }
+      
+      // どちらも空の場合は空配列を返す
+      console.warn('No reviews found in Supabase or localStorage')
       return []
     } catch (error: any) {
       // より詳細なエラー情報をログに出力
