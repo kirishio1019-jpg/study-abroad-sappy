@@ -149,10 +149,17 @@ export async function getAllReviews(): Promise<Review[]> {
         
         // localStorageの古いキャッシュをクリアしてから新しいデータを保存
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('reviews') // 古いキャッシュをクリア
-          localStorage.setItem('reviews', JSON.stringify(reviews))
-          localStorage.setItem('reviews_last_loaded', Date.now().toString()) // 読み込み時刻を記録
-          console.log(`✅ Loaded ${reviews.length} reviews from Supabase and cached to localStorage`)
+          try {
+            localStorage.removeItem('reviews') // 古いキャッシュをクリア
+            localStorage.setItem('reviews', JSON.stringify(reviews))
+            localStorage.setItem('reviews_last_loaded', Date.now().toString()) // 読み込み時刻を記録
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`✅ Loaded ${reviews.length} reviews from Supabase and cached to localStorage`)
+            }
+          } catch (localStorageError) {
+            console.warn('Failed to save reviews to localStorage:', localStorageError)
+            // localStorageへの保存が失敗しても、データは返す
+          }
         }
         
         return reviews

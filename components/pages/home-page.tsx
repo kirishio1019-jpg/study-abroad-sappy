@@ -39,24 +39,23 @@ export default function HomePage() {
         }
       }
       
-      // URLパラメータでキャッシュクリアが指定されている場合、または初回読み込み時
+      // URLパラメータでキャッシュクリアが指定されている場合
       if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search)
-        const shouldClearCache = urlParams.get('clear_cache') === 'true' || 
-                                 !localStorage.getItem('reviews_last_loaded') ||
-                                 (Date.now() - parseInt(localStorage.getItem('reviews_last_loaded') || '0', 10)) > 60000 // 1分以上経過している場合
-        
-        if (shouldClearCache) {
-          // キャッシュをクリア
-          localStorage.removeItem('reviews')
-          localStorage.removeItem('reviews_migrated_to_supabase')
-          
-          // URLパラメータを削除
+        try {
+          const urlParams = new URLSearchParams(window.location.search)
           if (urlParams.get('clear_cache') === 'true') {
+            // キャッシュをクリア
+            localStorage.removeItem('reviews')
+            localStorage.removeItem('reviews_migrated_to_supabase')
+            localStorage.removeItem('reviews_last_loaded')
+            
+            // URLパラメータを削除
             urlParams.delete('clear_cache')
             const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
             window.history.replaceState({}, '', newUrl)
           }
+        } catch (error) {
+          console.warn('Error handling cache clear:', error)
         }
       }
       
@@ -69,9 +68,20 @@ export default function HomePage() {
         console.log(`📱 Loaded ${fetchedReviews.length} reviews on home page`)
       }
       
-      // 最新順（IDの降順）でソート
-      fetchedReviews.sort((a, b) => b.id - a.id)
-      setReviews(fetchedReviews)
+      // 最新順（IDの降順）でソート（エラーハンドリング付き）
+      if (Array.isArray(fetchedReviews)) {
+        fetchedReviews.sort((a, b) => {
+          try {
+            return (b.id || 0) - (a.id || 0)
+          } catch (e) {
+            return 0
+          }
+        })
+        setReviews(fetchedReviews)
+      } else {
+        console.warn('Fetched reviews is not an array:', fetchedReviews)
+        setReviews([])
+      }
     } catch (error) {
       console.error('Failed to load reviews:', error)
       setReviews([])
