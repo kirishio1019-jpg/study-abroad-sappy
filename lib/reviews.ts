@@ -151,6 +151,7 @@ export async function getAllReviews(): Promise<Review[]> {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('reviews') // 古いキャッシュをクリア
           localStorage.setItem('reviews', JSON.stringify(reviews))
+          localStorage.setItem('reviews_last_loaded', Date.now().toString()) // 読み込み時刻を記録
           console.log(`✅ Loaded ${reviews.length} reviews from Supabase and cached to localStorage`)
         }
         

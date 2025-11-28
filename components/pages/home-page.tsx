@@ -39,16 +39,24 @@ export default function HomePage() {
         }
       }
       
-      // URLパラメータでキャッシュクリアが指定されている場合
+      // URLパラメータでキャッシュクリアが指定されている場合、または初回読み込み時
       if (typeof window !== 'undefined') {
         const urlParams = new URLSearchParams(window.location.search)
-        if (urlParams.get('clear_cache') === 'true') {
+        const shouldClearCache = urlParams.get('clear_cache') === 'true' || 
+                                 !localStorage.getItem('reviews_last_loaded') ||
+                                 (Date.now() - parseInt(localStorage.getItem('reviews_last_loaded') || '0', 10)) > 60000 // 1分以上経過している場合
+        
+        if (shouldClearCache) {
+          // キャッシュをクリア
           localStorage.removeItem('reviews')
           localStorage.removeItem('reviews_migrated_to_supabase')
+          
           // URLパラメータを削除
-          urlParams.delete('clear_cache')
-          const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
-          window.history.replaceState({}, '', newUrl)
+          if (urlParams.get('clear_cache') === 'true') {
+            urlParams.delete('clear_cache')
+            const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
+            window.history.replaceState({}, '', newUrl)
+          }
         }
       }
       
