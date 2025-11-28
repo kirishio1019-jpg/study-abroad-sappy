@@ -151,10 +151,10 @@ export async function getAllReviews(): Promise<Review[]> {
           // デバッグログ（本番環境でも出力）
           console.log(`✅ Loaded ${reviews.length} reviews from Supabase`)
           
-          // localStorageの古いキャッシュをクリアしてから新しいデータを保存
+          // Supabaseからデータを取得できた場合のみ、localStorageを更新
+          // これにより、Supabaseから取得できない場合でも、キャッシュされたデータが残る
           if (typeof window !== 'undefined') {
             try {
-              localStorage.removeItem('reviews') // 古いキャッシュをクリア
               localStorage.setItem('reviews', JSON.stringify(reviews))
               localStorage.setItem('reviews_last_loaded', Date.now().toString()) // 読み込み時刻を記録
               console.log(`✅ Cached ${reviews.length} reviews to localStorage`)
@@ -175,15 +175,16 @@ export async function getAllReviews(): Promise<Review[]> {
       }
       
       // dataが空の場合は、localStorageから取得を試みる（フォールバック）
-      console.log('📦 Checking localStorage for cached reviews...')
+      // これは正常な動作で、Supabaseにデータがない場合はキャッシュを使用
+      console.log('📦 Supabase returned empty data, checking localStorage for cached reviews...')
       const localReviews = getReviewsFromLocalStorage()
       if (localReviews.length > 0) {
-        console.log(`⚠️ Using ${localReviews.length} reviews from localStorage (fallback)`)
+        console.log(`✅ Using ${localReviews.length} reviews from localStorage (fallback - this is normal if Supabase has no reviews)`)
         return localReviews
       }
       
-      // どちらも空の場合は空配列を返す
-      console.warn('❌ No reviews found in Supabase or localStorage')
+      // どちらも空の場合は空配列を返す（これは正常 - レビューがまだ投稿されていない）
+      console.log('ℹ️ No reviews found in Supabase or localStorage (this is normal if no reviews have been posted yet)')
       return []
     } catch (error: any) {
       // より詳細なエラー情報をログに出力

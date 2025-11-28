@@ -39,11 +39,9 @@ export default function HomePage() {
         }
       }
       
-      // ページ読み込み時に必ずキャッシュをクリアしてからSupabaseから取得
-      // これにより、パソコンで投稿されたレビューがスマホでも確実に反映される
+      // URLパラメータでキャッシュクリアが指定されている場合のみクリア
       if (typeof window !== 'undefined') {
         try {
-          // URLパラメータでキャッシュクリアが指定されている場合
           const urlParams = new URLSearchParams(window.location.search)
           if (urlParams.get('clear_cache') === 'true') {
             // キャッシュをクリア
@@ -56,25 +54,13 @@ export default function HomePage() {
             const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
             window.history.replaceState({}, '', newUrl)
           }
-          
-          // ページ読み込み時は必ずキャッシュをクリアしてSupabaseから最新データを取得
-          // これにより、他のデバイス（パソコン）で投稿されたレビューが確実に反映される
-          const lastLoaded = localStorage.getItem('reviews_last_loaded')
-          const now = Date.now()
-          const shouldRefresh = !lastLoaded || (now - parseInt(lastLoaded, 10)) > 30000 // 30秒以上経過したら更新
-          
-          if (shouldRefresh) {
-            console.log('🔄 Clearing cache and fetching fresh data from Supabase...')
-            localStorage.removeItem('reviews') // 古いキャッシュをクリア
-            localStorage.setItem('reviews_last_loaded', now.toString()) // 更新時刻を記録
-          }
         } catch (error) {
           console.warn('Error handling cache clear:', error)
         }
       }
       
       // レビューを取得（Supabase優先、フォールバックはlocalStorage）
-      // スマホのキャッシュ問題を解決するため、必ずSupabaseから最新データを取得
+      // キャッシュは削除せず、Supabaseから取得した後、成功した場合のみ更新
       console.log('🔄 Fetching reviews from getAllReviews()...')
       const fetchedReviews = await getAllReviews()
       
