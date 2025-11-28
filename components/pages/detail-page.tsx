@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import CommentSection from "@/components/comment-section"
-import { getAllReviews } from "@/lib/reviews"
+import { getAllReviews, getReviewById } from "@/lib/reviews"
 
 interface DetailPageProps {
   reviewId: number
@@ -112,9 +112,8 @@ export default function DetailPage({ reviewId }: DetailPageProps) {
 
   const loadReview = async () => {
     try {
-      // SupabaseまたはlocalStorageからレビューを取得
-      const reviews = await getAllReviews()
-      const foundReview = reviews.find((r: any) => r.id === reviewId)
+      // IDで直接レビューを取得
+      const foundReview = await getReviewById(reviewId)
       
       if (foundReview) {
         setReview(foundReview as Review)
@@ -137,9 +136,15 @@ export default function DetailPage({ reviewId }: DetailPageProps) {
           setCanEdit(false)
           setCanDelete(false)
         }
+      } else {
+        console.warn(`Review with ID ${reviewId} not found`)
+        // レビューが見つからない場合は、ホームページに戻る
+        window.dispatchEvent(new CustomEvent('pageChange', { detail: { page: 'home' } }))
       }
     } catch (e) {
       console.error('Failed to load review:', e)
+      // エラー時もホームページに戻る
+      window.dispatchEvent(new CustomEvent('pageChange', { detail: { page: 'home' } }))
     }
   }
 

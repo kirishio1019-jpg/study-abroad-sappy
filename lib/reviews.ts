@@ -68,6 +68,53 @@ function isSupabaseAvailable(): boolean {
   return isAvailable
 }
 
+// SupabaseのデータをReview形式に変換
+function convertSupabaseReviewToReview(item: any): Review {
+  return {
+    id: item.id,
+    userId: item.user_id,
+    country: item.country,
+    university: item.university,
+    universityId: item.university_id,
+    title: item.title,
+    satisfaction: Number.parseFloat(item.satisfaction || '5.0'),
+    cost: item.cost || 0,
+    language: item.language || '',
+    author: item.author,
+    date: item.date,
+    excerpt: item.excerpt || '',
+    strongFields: item.strong_fields || [],
+    region: item.region,
+    major: item.major,
+    studyMajor: item.study_major,
+    selectionReason: item.selection_reason,
+    startDate: item.start_date,
+    startYear: item.start_year,
+    endDate: item.end_date,
+    endYear: item.end_year,
+    vacationPeriod: item.vacation_period,
+    creditsEarned: item.credits_earned,
+    creditsTransferred: item.credits_transferred,
+    credits300Level: item.credits_300_level,
+    languageCert: item.language_cert,
+    languageScore: item.language_score,
+    classLanguage: item.class_language,
+    costOfLiving: item.cost_of_living,
+    costOfLivingNote: item.cost_of_living_note,
+    foodCost: item.food_cost,
+    rent: item.rent,
+    culturalImpression: item.cultural_impression,
+    safety: item.safety,
+    climate: item.climate,
+    dailyMeals: item.daily_meals,
+    accommodation: item.accommodation,
+    extracurricularActivities: item.extracurricular_activities,
+    extracurricularActivitiesNote: item.extracurricular_activities_note,
+    positives: item.positives,
+    challenges: item.challenges,
+  }
+}
+
 // すべてのレビューを取得（Supabase優先、フォールバックはlocalStorage）
 export async function getAllReviews(): Promise<Review[]> {
   if (isSupabaseAvailable()) {
@@ -91,56 +138,14 @@ export async function getAllReviews(): Promise<Review[]> {
           errorType: typeof error,
           errorKeys: error ? Object.keys(error) : [],
         })
-        // エラー時はlocalStorageにフォールバック（ただし、Supabaseから取得できない場合のみ）
+        // エラー時はlocalStorageにフォールバック
         return getReviewsFromLocalStorage()
       }
       
       // dataがnullまたは空配列の場合も処理
       if (data) {
         // SupabaseのデータをReview形式に変換
-        const reviews = data.map((item: any) => ({
-          id: item.id,
-          userId: item.user_id,
-          country: item.country,
-          university: item.university,
-          universityId: item.university_id,
-          title: item.title,
-          satisfaction: Number.parseFloat(item.satisfaction || '5.0'),
-          cost: item.cost || 0,
-          language: item.language || '',
-          author: item.author,
-          date: item.date,
-          excerpt: item.excerpt || '',
-          strongFields: item.strong_fields || [],
-          region: item.region,
-          major: item.major,
-          studyMajor: item.study_major,
-          selectionReason: item.selection_reason,
-          startDate: item.start_date,
-          startYear: item.start_year,
-          endDate: item.end_date,
-          endYear: item.end_year,
-          vacationPeriod: item.vacation_period,
-          creditsEarned: item.credits_earned,
-          creditsTransferred: item.credits_transferred,
-          credits300Level: item.credits_300_level,
-          languageCert: item.language_cert,
-          languageScore: item.language_score,
-          classLanguage: item.class_language,
-          costOfLiving: item.cost_of_living,
-          costOfLivingNote: item.cost_of_living_note,
-          foodCost: item.food_cost,
-          rent: item.rent,
-          culturalImpression: item.cultural_impression,
-          safety: item.safety,
-          climate: item.climate,
-          dailyMeals: item.daily_meals,
-          accommodation: item.accommodation,
-          extracurricularActivities: item.extracurricular_activities,
-          extracurricularActivitiesNote: item.extracurricular_activities_note,
-          positives: item.positives,
-          challenges: item.challenges,
-        }))
+        const reviews = data.map(convertSupabaseReviewToReview)
         
         // localStorageの古いキャッシュをクリアしてから新しいデータを保存
         if (typeof window !== 'undefined') {
@@ -170,6 +175,50 @@ export async function getAllReviews(): Promise<Review[]> {
   
   // Supabaseが利用できない場合はlocalStorageから取得
   return getReviewsFromLocalStorage()
+}
+
+// IDでレビューを取得
+export async function getReviewById(reviewId: number): Promise<Review | null> {
+  if (isSupabaseAvailable()) {
+    try {
+      const supabase = createClient()
+      
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('id', reviewId)
+        .single()
+      
+      if (error) {
+        console.warn('Failed to fetch review by ID from Supabase, falling back to getAllReviews:', {
+          message: error.message || 'Unknown error',
+          details: error.details || 'No details',
+          hint: error.hint || 'No hint',
+          code: error.code || 'No code',
+        })
+        // エラー時はgetAllReviewsから検索
+        const reviews = await getAllReviews()
+        return reviews.find(r => r.id === reviewId) || null
+      }
+      
+      if (data) {
+        return convertSupabaseReviewToReview(data)
+      }
+      
+      return null
+    } catch (error: any) {
+      console.warn('Exception while fetching review by ID from Supabase, falling back to getAllReviews:', {
+        message: error?.message || 'Unknown error',
+      })
+      // エラー時はgetAllReviewsから検索
+      const reviews = await getAllReviews()
+      return reviews.find(r => r.id === reviewId) || null
+    }
+  }
+  
+  // Supabaseが利用できない場合はlocalStorageから検索
+  const reviews = getReviewsFromLocalStorage()
+  return reviews.find(r => r.id === reviewId) || null
 }
 
 // localStorageからレビューを取得
@@ -475,4 +524,3 @@ export async function migrateReviewsFromLocalStorage(): Promise<void> {
     console.error('Error migrating reviews from localStorage:', error)
   }
 }
-

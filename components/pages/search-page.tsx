@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react"
 import ReviewCard from "@/components/review-card"
 import { universitiesByRegion, regions, type University } from "@/lib/universities"
 import { costOfLivingOptions, costOfLivingOrder, type CostOfLivingLevel, isCostOfLivingBelowMax } from "@/lib/cost-of-living"
+import { getAllReviews } from "@/lib/reviews"
 
 interface StrongFieldCategory {
   category: string
@@ -141,38 +142,29 @@ export default function SearchPage({ initialFilters }: SearchPageProps = {}) {
 
   useEffect(() => {
     setIsClient(true)
-    // localStorageから投稿されたレビューを読み込む
-    const savedReviews = localStorage.getItem('reviews')
-    if (savedReviews) {
-      try {
-        const parsedReviews = JSON.parse(savedReviews)
-        // 最新順（IDの降順）でソート
-        parsedReviews.sort((a: any, b: any) => b.id - a.id) // 最新が上
-        setAllReviews(parsedReviews)
-      } catch (e) {
-        // パースエラー時は空配列
-      }
-    }
+    loadReviews()
   }, [])
+
+  const loadReviews = async () => {
+    try {
+      // SupabaseまたはlocalStorageからレビューを取得
+      const fetchedReviews = await getAllReviews()
+      // 最新順（IDの降順）でソート
+      fetchedReviews.sort((a: any, b: any) => b.id - a.id)
+      setAllReviews(fetchedReviews)
+    } catch (error) {
+      console.error('Failed to load reviews:', error)
+      setAllReviews([])
+    }
+  }
 
 
   // レビューが更新されたときのリスナー
   useEffect(() => {
     if (!isClient) return
     
-    const handleStorageChange = () => {
-      const savedReviews = localStorage.getItem('reviews')
-      if (savedReviews) {
-        try {
-          const parsedReviews = JSON.parse(savedReviews)
-          parsedReviews.sort((a: any, b: any) => b.id - a.id)
-          setAllReviews(parsedReviews)
-        } catch (e) {
-          // パースエラー時は無視
-        }
-      } else {
-        setAllReviews([])
-      }
+    const handleStorageChange = async () => {
+      await loadReviews()
     }
 
     window.addEventListener('storage', handleStorageChange)
