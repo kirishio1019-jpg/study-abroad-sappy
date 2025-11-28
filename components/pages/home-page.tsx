@@ -61,25 +61,31 @@ export default function HomePage() {
       
       // レビューを取得（Supabase優先、フォールバックはlocalStorage）
       // スマホのキャッシュ問題を解決するため、必ずSupabaseから最新データを取得
+      console.log('🔄 Fetching reviews from getAllReviews()...')
       const fetchedReviews = await getAllReviews()
       
-      // デバッグログ（開発環境のみ）
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`📱 Loaded ${fetchedReviews.length} reviews on home page`)
-      }
+      // デバッグログ（本番環境でも出力）
+      console.log(`📱 Home page: Loaded ${fetchedReviews?.length || 0} reviews`)
       
       // 最新順（IDの降順）でソート（エラーハンドリング付き）
       if (Array.isArray(fetchedReviews)) {
-        fetchedReviews.sort((a, b) => {
-          try {
-            return (b.id || 0) - (a.id || 0)
-          } catch (e) {
-            return 0
-          }
-        })
-        setReviews(fetchedReviews)
+        if (fetchedReviews.length > 0) {
+          fetchedReviews.sort((a, b) => {
+            try {
+              return (b.id || 0) - (a.id || 0)
+            } catch (e) {
+              console.warn('Error sorting reviews:', e)
+              return 0
+            }
+          })
+          console.log(`✅ Setting ${fetchedReviews.length} reviews to state`)
+          setReviews(fetchedReviews)
+        } else {
+          console.warn('⚠️ No reviews to display (empty array)')
+          setReviews([])
+        }
       } else {
-        console.warn('Fetched reviews is not an array:', fetchedReviews)
+        console.error('❌ Fetched reviews is not an array:', fetchedReviews)
         setReviews([])
       }
     } catch (error) {

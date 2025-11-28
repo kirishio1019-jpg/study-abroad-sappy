@@ -129,44 +129,53 @@ export async function getAllReviews(): Promise<Review[]> {
       
       if (error) {
         // より詳細なエラー情報をログに出力
-        console.warn('Failed to fetch reviews from Supabase, falling back to localStorage:', {
+        console.error('❌ Failed to fetch reviews from Supabase:', {
           message: error.message || 'Unknown error',
           details: error.details || 'No details',
           hint: error.hint || 'No hint',
           code: error.code || 'No code',
-          errorObject: error,
-          errorType: typeof error,
-          errorKeys: error ? Object.keys(error) : [],
         })
+        console.log('📦 Falling back to localStorage...')
         // エラー時はlocalStorageにフォールバック
-        return getReviewsFromLocalStorage()
+        const localReviews = getReviewsFromLocalStorage()
+        console.log(`📦 Found ${localReviews.length} reviews in localStorage`)
+        return localReviews
       }
       
       // dataがnullまたは空配列の場合も処理
-      if (data && data.length > 0) {
-        // SupabaseのデータをReview形式に変換
-        const reviews = data.map(convertSupabaseReviewToReview)
-        
-        // localStorageの古いキャッシュをクリアしてから新しいデータを保存
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.removeItem('reviews') // 古いキャッシュをクリア
-            localStorage.setItem('reviews', JSON.stringify(reviews))
-            localStorage.setItem('reviews_last_loaded', Date.now().toString()) // 読み込み時刻を記録
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`✅ Loaded ${reviews.length} reviews from Supabase and cached to localStorage`)
+      if (data && Array.isArray(data)) {
+        if (data.length > 0) {
+          // SupabaseのデータをReview形式に変換
+          const reviews = data.map(convertSupabaseReviewToReview)
+          
+          // デバッグログ（本番環境でも出力）
+          console.log(`✅ Loaded ${reviews.length} reviews from Supabase`)
+          
+          // localStorageの古いキャッシュをクリアしてから新しいデータを保存
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.removeItem('reviews') // 古いキャッシュをクリア
+              localStorage.setItem('reviews', JSON.stringify(reviews))
+              localStorage.setItem('reviews_last_loaded', Date.now().toString()) // 読み込み時刻を記録
+              console.log(`✅ Cached ${reviews.length} reviews to localStorage`)
+            } catch (localStorageError) {
+              console.warn('Failed to save reviews to localStorage:', localStorageError)
+              // localStorageへの保存が失敗しても、データは返す
             }
-          } catch (localStorageError) {
-            console.warn('Failed to save reviews to localStorage:', localStorageError)
-            // localStorageへの保存が失敗しても、データは返す
           }
+          
+          return reviews
+        } else {
+          // dataが空配列の場合
+          console.warn('⚠️ Supabase returned empty array (no reviews found)')
         }
-        
-        return reviews
+      } else {
+        // dataがnullまたはundefinedの場合
+        console.warn('⚠️ Supabase returned null or undefined data:', data)
       }
       
       // dataが空の場合は、localStorageから取得を試みる（フォールバック）
-      console.warn('No reviews found in Supabase, checking localStorage...')
+      console.log('📦 Checking localStorage for cached reviews...')
       const localReviews = getReviewsFromLocalStorage()
       if (localReviews.length > 0) {
         console.log(`⚠️ Using ${localReviews.length} reviews from localStorage (fallback)`)
@@ -174,7 +183,7 @@ export async function getAllReviews(): Promise<Review[]> {
       }
       
       // どちらも空の場合は空配列を返す
-      console.warn('No reviews found in Supabase or localStorage')
+      console.warn('❌ No reviews found in Supabase or localStorage')
       return []
     } catch (error: any) {
       // より詳細なエラー情報をログに出力
